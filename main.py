@@ -40,19 +40,19 @@ def get_page(url: str) -> BeautifulSoup:
     return BeautifulSoup(response.text, "html.parser")
 
 
+
 def fetch_india_22k_rate() -> dict:
     """
-    Fetch the 22K indicative retail selling rate from IBJA's official website.
-
-    IBJA displays the rate per gram and identifies the publication date
-    and whether the bulletin is AM or PM.
+    Fetch IBJA's indicative 22K retail jewellery rate per gram.
+    Accepts whitespace variations around the currency and rate.
+    Fails safely if the date or rate cannot be verified.
     """
     soup = get_page(INDIA_URL)
     page_text = " ".join(soup.stripped_strings)
 
     heading = re.search(
         r"IBJA['’]s\s+indicative\s+Retail\s+selling\s+Rates\s+"
-        r"for\s+Gold\s+Jewellery\s*\((AM|PM)\)",
+        r"for\s+Gold\s+Jewellery\s*\(\s*(AM|PM)\s*\)",
         page_text,
         re.IGNORECASE,
     )
@@ -60,37 +60,64 @@ def fetch_india_22k_rate() -> dict:
     if not heading:
         raise RuntimeError(
             "Could not find IBJA's retail gold-rate section. "
-            "The website structure may have changed."
+            "Check the official website or its page structure."
         )
 
-    # Restrict extraction to the text following the expected heading.
-    section = page_text[heading.end():heading.end() + 1200]
+    # Read the text after the heading, where the bulletin date and
+    # rates are expected. Allow extra whitespace around all fields.
+    section = page_text[heading.end():heading.end() + 2000]
 
     date_match = re.search(
-        r"\b(\d{1,2}/\d{1,2}/\d{4})\b",
+        r"\b(\d{1,2}\s*/\s*\d{1,2}\s*/\s*\d{4})\b",
         section,
     )
+
     rate_match = re.search(
-        r"\b22\s*KT\s*:\s*(?:₹|Rs\.?\s*)?([\d,]+(?:\.\d{1,2})?)",
+        r"\b22\s*KT\s*[:\-]?\s*"
+        r"(?:₹\s*|Rs\.?\s*)?"
+        r"([\d,]+(?:\.\d{1,2})?)\b",
         section,
         re.IGNORECASE,
     )
 
     if not date_match or not rate_match:
+        # Print a short diagnostic excerpt in GitHub Actions logs.
+        # This contains page text, not email credentials.
+        print(
+            "IBJA extraction diagnostic — expected date/rate not found.",
+            file=sys.stderr,
+        )
+        print(
+            f"Bulletin excerpt: {section[:700]}",
+            file=sys.stderr,
+        )
         raise RuntimeError(
-            "Could not reliably extract IBJA's 22K rate and publication date. "
-            "No guessed price will be used."
+            "Could not reliably extract IBJA's 22K rate and "
+            "publication date. No guessed price will be used."
         )
 
-    rate = round(float(rate_match.group(1).replace(",", "")))
-    if rate <= 0:
-        raise RuntimeError("IBJA returned an invalid 22K rate.")
+    rate_text = rate_match.group(1).replace(",", "")
+    rate_value = float(rate_text)
 
+    if not rate_value.is_integer() or rate_value <= 0:
+        raise RuntimeError(
+            f"IBJA returned an invalid or unexpected 22K rate: "
+            f"{rate_text}"
+        )
+
+    rate = int(rate_value)
+
+    date_text = re.sub(r"\s+", "", date_match.group(1))
     published_date = datetime.strptime(
-        date_match.group(1), "%d/%m/%Y"
+        date_text, "%d/%m/%Y"
     ).date()
 
     now = datetime.now(IST)
+
+    if published_date > now.date():
+        raise RuntimeError(
+            f"IBJA publication date is in the future: {published_date}"
+        )
 
     return {
         "rate_per_gram": rate,
