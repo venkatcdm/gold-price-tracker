@@ -6,10 +6,9 @@ on:
     # 09:00 AM IST = 03:30 UTC
     - cron: "30 3 * * *"
 
-    # 09:00 PM IST = 15:30 UTC
-    - cron: "30 15 * * *"
-
-  workflow_dispatch::
+    ## 09:15 PM IST = 15:45 UTC
+    - cron: "45 15 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: write
