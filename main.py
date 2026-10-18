@@ -397,15 +397,18 @@ def build_email(
 def send_email(subject: str, plain_body: str, html_body: str) -> None:
     username = os.environ.get("MAIL_USERNAME", "").strip()
     app_password = os.environ.get("MAIL_APP_PASSWORD", "").replace(" ", "")
-    recipient = os.environ.get("RECIPIENT_EMAIL", "").strip()
+    recipient_raw = os.environ.get("RECIPIENT_EMAIL", "").strip()
 
-    if not all([username, app_password, recipient]):
+    if not all([username, app_password, recipient_raw]):
         raise RuntimeError("Missing GitHub Actions secret(s).")
+
+    # Support multiple comma-separated recipients
+    recipients = [r.strip() for r in recipient_raw.split(",") if r.strip()]
 
     message = EmailMessage()
     message["Subject"] = subject
     message["From"] = username
-    message["To"] = recipient
+    message["To"] = ", ".join(recipients)
     message.set_content(plain_body)
     message.add_alternative(html_body, subtype="html")
 
@@ -414,7 +417,7 @@ def send_email(subject: str, plain_body: str, html_body: str) -> None:
         server.starttls()
         server.ehlo()
         server.login(username, app_password)
-        server.send_message(message)
+        server.send_message(message, to_addrs=recipients)
 
 
 def main() -> None:
@@ -449,7 +452,7 @@ def main() -> None:
     )
     send_email(subject, plain, html_body)
 
-    print(f"Email sent successfully for {today_key}.")
+    print(f"Email sent successfully for {today_key} to all recipients.")
 
 
 if __name__ == "__main__":
