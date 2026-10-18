@@ -1,15 +1,10 @@
 
 name: Daily India and Chennai 22K Gold Email
-
 on:
   schedule:
-    # 09:00 AM IST = 03:30 UTC
-    - cron: "30 3 * * *"
-
-    ## 09:15 PM IST = 15:45 UTC
-    - cron: "45 15 * * *"
+    - cron: "37 3 * * *"
+    - cron: "52 15 * * *"
   workflow_dispatch:
-
 permissions:
   contents: write
 
