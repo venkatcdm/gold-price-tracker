@@ -1,4 +1,3 @@
-
 import html
 import json
 import os
@@ -38,7 +37,6 @@ def get_page(url: str) -> BeautifulSoup:
     response = requests.get(url, headers=HEADERS, timeout=25)
     response.raise_for_status()
     return BeautifulSoup(response.text, "html.parser")
-
 
 
 def fetch_india_22k_rate() -> dict:
@@ -331,27 +329,29 @@ def build_region_html(
     market: dict,
     comparison: dict,
 ) -> str:
-    """Build one region's section for the HTML email."""
+    """Build one region's section for the HTML email with a modern card design."""
     rate = int(market["rate_per_gram"])
     sovereign = rate * 8
 
+    # Professional color scheme matching status
     colors = {
-        "increased": "#b91c1c",
-        "decreased": "#15803d",
-        "unchanged": "#64748b",
-        "baseline": "#64748b",
+        "increased": {"border": "#dc2626", "bg": "#fef2f2", "text": "#991b1b"},
+        "decreased": {"border": "#16a34a", "bg": "#f0fdf4", "text": "#166534"},
+        "unchanged": {"border": "#64748b", "bg": "#f8fafc", "text": "#334155"},
+        "baseline": {"border": "#d97706", "bg": "#fffbeb", "text": "#92400e"},
     }
-    color = colors[comparison["status"]]
+    theme = colors[comparison["status"]]
     change = html.escape(comparison_text(comparison))
 
     stale_notice = ""
     if market["stale_days"] > 2:
         stale_notice = (
-            '<p style="padding:10px;background:#fff7ed;'
-            'color:#9a3412;border-radius:8px;">'
-            f'⚠️ The source publication is '
-            f'{market["stale_days"]} days old. Verify the rate before '
-            'relying on it.</p>'
+            '<div style="padding:12px;background:#fff7ed;color:#9a3412;'
+            'border-left:4px solid #ea580c;border-radius:6px;margin-bottom:16px;'
+            'font-size:13px;">'
+            f'⚠️ <b>Warning:</b> The source publication is {market["stale_days"]} '
+            'days old. Please verify rates before relying on them.'
+            '</div>'
         )
 
     source = html.escape(market["source"])
@@ -359,38 +359,45 @@ def build_region_html(
     updated = html.escape(market["source_updated_label"])
 
     return f"""
-    <h2 style="margin:24px 0 8px;">{html.escape(title)}</h2>
-    {stale_notice}
-    <table role="presentation"
-           style="width:100%;border-collapse:separate;border-spacing:0 8px;">
-      <tr><td style="padding:16px;background:#f8fafc;border-radius:8px;">
-        <div style="font-size:14px;color:#64748b;">22K gold · 1 gram</div>
-        <div style="font-size:28px;font-weight:bold;margin-top:5px;">
-          {money(rate)}
-        </div>
-      </td></tr>
-      <tr><td style="padding:16px;background:#f8fafc;border-radius:8px;">
-        <div style="font-size:14px;color:#64748b;">
-          22K gold · 1 sovereign (8 grams)
-        </div>
-        <div style="font-size:28px;font-weight:bold;margin-top:5px;">
-          {money(sovereign)}
-        </div>
-      </td></tr>
-    </table>
-    <div style="padding:12px;border-left:5px solid {color};
-                background:#f8fafc;color:{color};border-radius:6px;">
-      <b>{html.escape(comparison['label'])}</b>
-      <div style="margin-top:6px;">{change}</div>
+    <div style="margin-top:28px;margin-bottom:28px;">
+      <h2 style="font-size:18px;color:#1e293b;margin:0 0 12px 0;padding-bottom:6px;border-bottom:2px solid #e2e8f0;">
+        {html.escape(title)}
+      </h2>
+      {stale_notice}
+      
+      <!-- Price Cards Grid -->
+      <table role="presentation" style="width:100%;border-collapse:separate;border-spacing:0 10px;">
+        <tr>
+          <td style="padding:16px 20px;background:#ffffff;border:1px solid #e2e8f0;border-top:4px solid #d97706;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#64748b;font-weight:600;">22K Gold · 1 Gram</div>
+            <div style="font-size:26px;font-weight:700;color:#0f172a;margin-top:6px;">
+              {money(rate)}
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 20px;background:#ffffff;border:1px solid #e2e8f0;border-top:4px solid #b45309;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <div style="font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#64748b;font-weight:600;">22K Gold · 1 Sovereign (8 Grams)</div>
+            <div style="font-size:26px;font-weight:700;color:#0f172a;margin-top:6px;">
+              {money(sovereign)}
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Comparison Banner -->
+      <div style="padding:14px 16px;border-left:4px solid {theme['border']};background:{theme['bg']};color:{theme['text']};border-radius:6px;margin-top:12px;font-size:14px;">
+        <div style="font-weight:700;margin-bottom:3px;">{html.escape(comparison['label'])}</div>
+        <div style="font-size:13px;opacity:0.9;">{change}</div>
+      </div>
+
+      <!-- Source Meta Details -->
+      <div style="margin-top:10px;padding:4px 2px;font-size:12px;color:#64748b;line-height:1.5;">
+        <b>Source:</b> <a href="{source_url}" style="color:#2563eb;text-decoration:none;">{source}</a><br>
+        <b>Published:</b> {updated}<br>
+        <b>Fetched:</b> {html.escape(datetime.fromisoformat(market['fetched_at']).astimezone(IST).strftime('%d %b %Y, %I:%M %p IST'))}
+      </div>
     </div>
-    <p style="font-size:12px;color:#475569;">
-      <b>Source:</b> <a href="{source_url}">{source}</a><br>
-      <b>Published:</b> {updated}<br>
-      <b>Fetched:</b> {html.escape(
-          datetime.fromisoformat(market['fetched_at'])
-          .astimezone(IST).strftime('%d %b %Y, %I:%M %p IST')
-      )}
-    </p>
     """
 
 
@@ -402,7 +409,7 @@ def build_email(
     chennai_comparison: dict,
 ) -> tuple[str, str, str]:
     """Create subject, plain-text body, and HTML body."""
-    subject = f"Daily 22K Gold Price — India & Chennai — {today_key}"
+    subject = f"✨ Daily 22K Gold Price Report — India & Chennai — {today_key}"
 
     # India is intentionally displayed first.
     plain = (
@@ -429,26 +436,50 @@ def build_email(
 
     html_body = f"""<!doctype html>
 <html>
-<body style="margin:0;background:#f1f5f9;
-             font-family:Arial,sans-serif;color:#0f172a;">
-<div style="max-width:620px;margin:24px auto;padding:24px;
-            background:#fff;border-radius:14px;">
-  <h1 style="font-size:23px;">Daily 22K Gold Price</h1>
-  <p style="color:#64748b;">Report date: {html.escape(today_key)} · INR</p>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Gold Price Report</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;">
+  <table role="presentation" style="width:100%;border-collapse:collapse;background-color:#f8fafc;padding:20px 0;">
+    <tr>
+      <td align="center">
+        <!-- Main Email Container -->
+        <table role="presentation" style="width:100%;max-width:600px;border-collapse:collapse;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1),0 2px 4px -1px rgba(0,0,0,0.06);">
+          
+          <!-- Header Banner -->
+          <tr>
+            <td style="background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%);padding:32px 24px;text-align:center;color:#ffffff;">
+              <div style="font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#fbbf24;font-weight:700;margin-bottom:8px;">Daily Market Report</div>
+              <h1 style="margin:0;font-size:24px;font-weight:700;color:#ffffff;">22K Gold Price Tracker</h1>
+              <p style="margin:8px 0 0 0;font-size:14px;color:#94a3b8;">Report Date: <b>{html.escape(today_key)}</b></p>
+            </td>
+          </tr>
 
-  {build_region_html("1. India — IBJA", india, india_comparison)}
+          <!-- Content Body -->
+          <tr>
+            <td style="padding:32px 24px;">
+              {build_region_html("1. India — IBJA", india, india_comparison)}
+              
+              <div style="height:1px;background-color:#e2e8f0;margin:16px 0;"></div>
 
-  <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+              {build_region_html("2. Chennai — CWJA", chennai, chennai_comparison)}
+            </td>
+          </tr>
 
-  {build_region_html("2. Chennai — CWJA", chennai, chennai_comparison)}
+          <!-- Footer Disclaimer -->
+          <tr>
+            <td style="background-color:#f1f5f9;padding:20px 24px;font-size:12px;color:#64748b;line-height:1.6;border-top:1px solid #e2e8f0;">
+              <p style="margin:0 0 8px 0;"><b>Disclaimer:</b> Indicative association-published rates only. IBJA retail rates exclude 3% GST and making charges. Actual retail jewellery prices differ. Verify with your jeweller before purchase.</p>
+              <p style="margin:0;">Generated automatically via GitHub Actions &bull; Gold Price Tracker</p>
+            </td>
+          </tr>
 
-  <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
-  <p style="font-size:12px;color:#64748b;">
-    Indicative association-published rates only. IBJA's displayed
-    retail rate excludes 3% GST and making charges. Actual jewellery
-    prices may differ. Verify with your jeweller before purchase.
-  </p>
-</div>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>"""
 
