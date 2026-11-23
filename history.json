@@ -502,5 +502,19 @@
       "source_updated": "2026-11-21T09:41:13+05:30",
       "fetched_at": "2026-11-22T20:33:17.265532+05:30"
     }
+  },
+  "2026-11-24": {
+    "india": {
+      "rate_per_gram": 12195,
+      "source": "India Bullion and Jewellers Association (IBJA)",
+      "source_updated": "2026-11-23",
+      "fetched_at": "2026-11-24T00:28:26.521352+05:30"
+    },
+    "chennai": {
+      "rate_per_gram": 11600,
+      "source": "Chennai Wholesale Jewellers Association (CWJA)",
+      "source_updated": "2026-11-23T09:41:25+05:30",
+      "fetched_at": "2026-11-24T00:28:27.398019+05:30"
+    }
   }
 }
